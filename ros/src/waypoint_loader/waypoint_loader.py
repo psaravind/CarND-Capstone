@@ -3,17 +3,13 @@
 import os
 import csv
 import math
-
 from geometry_msgs.msg import Quaternion
-
 from styx_msgs.msg import Lane, Waypoint
-
 import tf
 import rospy
 
 CSV_HEADER = ['x', 'y', 'z', 'yaw']
 MAX_DECEL = 1.0
-
 
 class WaypointLoader(object):
 
@@ -77,7 +73,6 @@ class WaypointLoader(object):
         lane.header.stamp = rospy.Time(0)
         lane.waypoints = waypoints
         self.pub.publish(lane)
-
 
 if __name__ == '__main__':
     try:
