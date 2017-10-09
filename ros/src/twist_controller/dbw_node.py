@@ -2,10 +2,10 @@
 
 import rospy
 from std_msgs.msg import Bool
+from styx_msgs.msg import Lane, Waypoint
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import TwistStamped, PoseStamped, Pose
 import math
-
 from twist_controller import Controller
 
 '''
@@ -45,6 +45,7 @@ class DBWNode(object):
         steer_ratio = rospy.get_param('~steer_ratio', 14.8)
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
+        min_speed = rospy.get_param('~min_speed', 5)
 
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
                                          SteeringCmd, queue_size=1)
@@ -54,24 +55,49 @@ class DBWNode(object):
                                          BrakeCmd, queue_size=1)
 
         # TODO: Create `TwistController` object
-        # self.controller = TwistController(<Arguments you wish to provide>)
+        params = {
+            'vehicle_mass'    : vehicle_mass,
+            'fuel_capacity'   : fuel_capacity,
+            'brake_deadband'  : brake_deadband,
+            'decel_limit'     : decel_limit,
+            'accel_limit'     : accel_limit,
+            'wheel_radius'    : wheel_radius,
+            'wheel_base'      : wheel_base,
+            'steer_ratio'     : steer_ratio,
+            'max_lat_accel'   : max_lat_accel,
+            'max_steer_angle' : max_steer_angle,
+            'min_speed'       : min_speed
+        }
+        self.controller = Controller(**params)
 
         # TODO: Subscribe to all the topics you need to
+        self.dbw_enabled = False
+        self.current_setpoint = None
+        self.current_velocity = None
+        self.current_pose = None
 
+        rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb, queue_size=1)
+        rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb, queue_size=1)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb, queue_size=1)
+        rospy.Subscriber('/current_pose', PoseStamped, self.current_pose_cb)
         self.loop()
 
     def loop(self):
-        rate = rospy.Rate(50) # 50Hz
+        rate = rospy.Rate(20) # 50Hz
         while not rospy.is_shutdown():
             # TODO: Get predicted throttle, brake, and steering using `twist_controller`
             # You should only publish the control commands if dbw is enabled
-            # throttle, brake, steering = self.controller.control(<proposed linear velocity>,
-            #                                                     <proposed angular velocity>,
-            #                                                     <current linear velocity>,
-            #                                                     <dbw status>,
-            #                                                     <any other argument you need>)
-            # if <dbw is enabled>:
-            #   self.publish(throttle, brake, steer)
+            if ((self.current_pose is not None) and \
+                (self.current_velocity is not None) and \
+                (self.current_setpoint is not None)):
+                throttle, brake, steering = self.controller.control(self.current_setpoint.linear.x, 
+                    self.current_setpoint.angular.z, 
+                    self.current_velocity.linear.x, 
+                    self.current_velocity.angular.z, 
+                    self.dbw_enabled,
+                    self.current_pose.position)
+                if self.dbw_enabled:
+                    self.publish(throttle, brake, steering)
             rate.sleep()
 
     def publish(self, throttle, brake, steer):
@@ -91,7 +117,22 @@ class DBWNode(object):
         bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
         bcmd.pedal_cmd = brake
         self.brake_pub.publish(bcmd)
+        pass
 
+    def dbw_enabled_cb(self, msg):
+        self.dbw_enabled = msg.data
+        pass        
 
+    def twist_cmd_cb(self, msg):
+        self.current_setpoint = msg.twist
+        pass
+
+    def current_velocity_cb(self, msg):
+        self.current_velocity = msg.twist
+        pass
+
+    def current_pose_cb(self, msg):
+        self.current_pose = msg.pose
+        pass
 if __name__ == '__main__':
     DBWNode()
