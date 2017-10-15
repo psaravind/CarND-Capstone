@@ -157,8 +157,9 @@ class WaypointUpdater(object):
         return res
 
     def traffic_cb(self, traffic_waypoint):
-        if (self.next_waypoint_index is None
-            or self.waypoints is None):
+        if self.next_waypoint_index is None:
+            return
+        if self.waypoints is None:
             return
 
         stop_line_index = traffic_waypoint.data
