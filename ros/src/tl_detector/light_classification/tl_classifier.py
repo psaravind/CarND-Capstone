@@ -7,12 +7,12 @@ import numpy as np
 
 class TLClassifier(object):
     def __init__(self):
-        self.cascade = None # Haar cascade for TL detection
+        self.cascade = None
         self.test_model = None
         self.graph = None
 
     def init(self):
-        self.cascade = cv2.CascadeClassifier('./cascade_gen.xml') # Haar cascade for TL detection
+        self.cascade = cv2.CascadeClassifier('./cascade_gen.xml')
         self.test_model = load_model('./models/tl_state_aug_v3.h5')
         self.graph = tensorflow.get_default_graph()
 
@@ -66,9 +66,8 @@ class TLClassifier(object):
             # FP filter
             dh=int(round(h*0.1))
             line = cv_image[(y+dh):(y+h-dh),int(round(x+w/2)),:]
-            if np.std(line) < 32: # Magic number out of experiments
-                print "False Detection!"
-                continue # FP detection
+            if np.std(line) < 32:
+                continue
             tl_img = cv_image[y:(y + h), x:(x + w)]
             tl_img_rgb = cv2.resize(tl_img, (img_width, img_height))
             tl_img_rgb = cv2.cvtColor(tl_img_rgb , cv2.COLOR_BGR2RGB)
@@ -79,15 +78,12 @@ class TLClassifier(object):
 
             if int(predictedclass) == 2:
                 state = TrafficLight.YELLOW
-                print "Yellow Light"
                 continue
             elif int(predictedclass) == 1:
                 state = TrafficLight.GREEN
-                print "Green light"
                 continue
             elif int(predictedclass) == 3:
                 state = TrafficLight.RED
-                print "Red Light"
                 break
             else:
                 continue
