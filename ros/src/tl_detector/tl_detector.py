@@ -82,13 +82,14 @@ class TLDetector(object):
         light_pos = light.pose.pose.position
         for pos in stop_line_positions:
             distance = self.euclidean_distance_2d(pos, light_pos)
-            if (distance < min_distance):
+            if distance < min_distance:
                 min_distance = distance
                 result = pos
         return result
 
     def traffic_cb(self, msg):
-        if not self.stop_lines and self.KDTree:
+        if (not self.stop_lines 
+            and self.KDTree):
             stop_lines = []
             for light in msg.lights:
                 stop_line_pos = self.find_stop_line_position(light)
@@ -140,14 +141,15 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        if (not self.has_image):
+        if not self.has_image:
             self.prev_light_loc = None
             return False
 
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         state = self.light_classifier.get_classification(cv_image)
-        if state == TrafficLight.UNKNOWN and self.last_state:
+        if (state == TrafficLight.UNKNOWN 
+            and self.last_state):
             state = self.last_state
         return state
 
@@ -162,9 +164,9 @@ class TLDetector(object):
         light = None
         light_wp = -1
 
-        if self.waypoints and 
+        if (self.waypoints and 
             self.next_wp and 
-            self.stop_lines:
+            self.stop_lines):
             next_wp = self.waypoints[min(self.next_wp, len(self.waypoints)-1)]
             target_velocity = next_wp.twist.twist.linear.x
             search_distance = target_velocity * target_velocity / 2 / MAX_DECEL
@@ -195,11 +197,11 @@ class TLDetector(object):
                 + (test_y - orig_posit.y) * math.sin(yaw))
         return orig_x > 0.
 
-    def euclidean_distance_2d(self, position1, position2):
-        a_x = self.get_x(position1)
-        a_y = self.get_y(position1)
-        b_x = self.get_x(position2)
-        b_y = self.get_y(position2)
+    def euclidean_distance_2d(self, p1, p2):
+        a_x = self.get_x(p1)
+        a_y = self.get_y(p1)
+        b_x = self.get_x(p2)
+        b_y = self.get_y(p2)
         return math.sqrt((a_x - b_x)**2 + (a_y - b_y)**2)
 
     def get_x(self, pos):
