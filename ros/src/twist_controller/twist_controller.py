@@ -29,11 +29,8 @@ class Controller(object):
         yaw_params = [wheel_base, steer_ratio, max_lat_accel, max_steer_angle, min_speed]
         self.yaw_controller = YawController(*yaw_params)
         self.linear_pid = PID(0.9, 0.0005, 0.07, self.decel_limit, accel_limit)
-        self.tau_correction = 0.2
-        self.ts_correction = 0.1
-        self.low_pass_filter_correction = LowPassFilter(self.tau_correction, self.ts_correction)
+        self.low_pass_filter_correction = LowPassFilter(0.2, 0.1)
         self.previous_time = None
-        pass
 
     def update_sample_step(self):
         current_time = rospy.get_time() 
@@ -47,7 +44,8 @@ class Controller(object):
         angular_current, 
         dbw_enabled, 
         current_location):
-        if (not self.current_dbw_enabled) and dbw_enabled:
+        if (not self.current_dbw_enabled
+            and dbw_enabled):
             self.current_dbw_enabled = True
             self.linear_pid.reset()
             self.previous_time = None
@@ -59,7 +57,8 @@ class Controller(object):
 
         velocity_correction = self.linear_pid.step(linear_velocity_error, sample_step)
         velocity_correction = self.low_pass_filter_correction.filt(velocity_correction)
-        if abs(linear_velocity_setpoint)<0.01 and abs(linear_current_velocity) < 0.3:
+        if (abs(linear_velocity_setpoint) < 0.01 
+            and abs(linear_current_velocity) < 0.3):
             velocity_correction = self.decel_limit
         throttle = velocity_correction
         brake = 0.
