@@ -39,13 +39,14 @@ class WaypointUpdater(object):
     def loop(self):
         rate = rospy.Rate(20)
         while not rospy.is_shutdown():
-            if (self.waypoints and self.next_waypoint_index):
+            if (self.waypoints 
+                and self.next_waypoint_index):
                 lane = Lane()
                 lane.header.frame_id = self.current_pose.header.frame_id
                 lane.header.stamp = rospy.Time(0)
                 lane.waypoints = self.waypoints[self.next_waypoint_index:self.next_waypoint_index + LOOKAHEAD_WPS]
 
-                if (self.stop_trajectory):
+                if self.stop_trajectory:
                     start_index = self.stop_trajectory[0]
                     wps = self.stop_trajectory[1]
                     shift = self.next_waypoint_index - start_index
@@ -70,7 +71,7 @@ class WaypointUpdater(object):
         start = 0
         end = len(self.waypoints)
         
-        if (self.next_waypoint_index):
+        if self.next_waypoint_index:
             start = max(self.next_waypoint_index - SEARCH_RANGE, 0)
             end = min(self.next_waypoint_index + SEARCH_RANGE, end)
             end = min(self.next_waypoint_index + SEARCH_RANGE, end)
@@ -89,15 +90,14 @@ class WaypointUpdater(object):
         x = self.current_pose.pose.position.x
         y = self.current_pose.pose.position.y
 
-        quaternion = (
-            self.current_pose.pose.orientation.x,
+        quaternion = (self.current_pose.pose.orientation.x,
             self.current_pose.pose.orientation.y,
             self.current_pose.pose.orientation.z,
             self.current_pose.pose.orientation.w)
         yaw = tf.transformations.euler_from_quaternion(quaternion)[2]
 
         x_car_system = ((map_x - x) * math.cos(yaw) + (map_y - y) * math.sin(yaw))
-        if (x_car_system < 0.):
+        if x_car_system < 0.:
             min_ind += 1
         self.next_waypoint_index = min_ind
         return min_ind
@@ -109,17 +109,18 @@ class WaypointUpdater(object):
             self.next_wp_pub.publish(Int32(next_waypoint_index))
 
     def waypoints_cb(self, lane):
-        if hasattr(self, 'waypoints') and self.waypoints != lane.waypoints:
+        if (hasattr(self, 'waypoints') 
+            and self.waypoints != lane.waypoints):
             self.waypoints = lane.waypoints
             self.next_waypoint_index = None
 
     def set_stop_trajectory(self, next_waypoint_index, stop_line_index):
-        if (self.stop_trajectory):
+        if self.stop_trajectory:
             old_start = self.stop_trajectory[0]
             wps = self.stop_trajectory[1]
             self.stop_trajectory = [next_waypoint_index, wps[next_waypoint_index-old_start:]]
         else:
-            if (stop_line_index >= next_waypoint_index):
+            if stop_line_index >= next_waypoint_index:
                 stop_distance = self.distance(self.waypoints, next_waypoint_index, stop_line_index)
                 full_stop_velocity = math.sqrt(2 * MAX_DECEL * stop_distance)
                 target_velocity = self.waypoints[next_waypoint_index].twist.twist.linear.x
@@ -134,12 +135,13 @@ class WaypointUpdater(object):
                 final_index = min(next_waypoint_index+LOOKAHEAD_WPS, len(self.waypoints))
                 for i in range(next_waypoint_index, final_index):
                     velocity_setpoint = cs(distance).tolist()
-                    if (i > stop_line_index) or (velocity_setpoint < 0.3):
+                    if (i > stop_line_index 
+                        or velocity_setpoint < 0.3):
                         velocity_setpoint = 0.
                     wp = copy.deepcopy(self.waypoints[i])
                     wp.twist.twist.linear.x  = velocity_setpoint
                     wps.append(wp)
-                    if (i < stop_line_index):
+                    if i < stop_line_index:
                         distance += self.distance(self.waypoints, i, i + 1)
 
                 self.stop_trajectory = [next_waypoint_index, wps]
@@ -155,13 +157,12 @@ class WaypointUpdater(object):
         return res
 
     def traffic_cb(self, traffic_waypoint):
-        if (self.next_waypoint_index is None):
-            return
-        if (self.waypoints is None):
+        if (self.next_waypoint_index is None
+            or self.waypoints is None):
             return
 
         stop_line_index = traffic_waypoint.data
-        if (stop_line_index > -1):
+        if stop_line_index > -1:
             self.set_stop_trajectory(self.next_waypoint_index, stop_line_index)
         else:
             self.stop_trajectory = None
